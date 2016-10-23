@@ -21,15 +21,23 @@
   <body>
     <script src="adapter.js"></script>
     <script src="JsSpeechRecognizer.js"></script>
+    <script src="flotsam32.js"></script>
 
     <h1>SR</h1>
 
+    <input id="word" value="">
     <button autofocus onclick="r()">REC</button>
     <button onclick="play(sr.recordingBufferArray.length-1)">PLAY</button>
+    <button onclick="l()">LISTEN</button>
 
     <script>
         var sr = new JsSpeechRecognizer();
         sr.openMic();
+
+
+
+        var REC_MS = 3000;
+        var LISTEN_MS = 3000;
 
 
 
@@ -68,18 +76,29 @@
 
 
         function r() {
-          console.log('start');
-          record('mask');
+          var w = word.value || 'default';
+          console.log('start recording %s...', w);
+          record(w);
           setTimeout(function() {
             var i = stopRecord();
             console.log('stop #%s', i);
-            var buf = sr.recordingBufferArray[i];
-            render(buf);
-          }, 3000);
+            render(i);
+          }, REC_MS);
         }
 
 
-        function render(buf) {
+        function l() {
+          console.log('start listening...');
+          listen();
+          setTimeout(function() {
+            var res = stopListen();
+            console.log(res[0]);
+          }, LISTEN_MS);
+        }
+
+
+        function render(i) {
+          var buf = sr.recordingBufferArray[i];
           var W = 800;
           var H = 300;
           var cvsEl = document.querySelector('canvas');
@@ -122,6 +141,63 @@
             ctx.fillRect(i, y, 1, yy - y);
             yy = y;
           }
+
+          function onClick(ev) {
+            var x = ev.clientX - cvsEl.getBoundingClientRect().left;
+            x *= L / W;
+            x = Math.round(x);
+            console.log(x);
+          }
+
+          cvsEl.addEventListener('mousedown', onClick);
+          cvsEl.addEventListener('mouseup',   onClick);
+        }
+
+
+
+        function removeEnd(i, b, dontRender) {
+          var arr = sr.recordingBufferArray[i];
+          arr.splice(b, 100000);
+          if (dontRender) { return; } render(i); play(i);
+        }
+
+        function removeStart(i, a, dontRender) {
+          var arr = sr.recordingBufferArray[i];
+          arr.splice(0, a);
+          if (dontRender) { return; } render(i); play(i);
+        }
+
+        function removePart(i, a, b, dontRender) {
+          var arr = sr.recordingBufferArray[i];
+          arr.splice(a, b-a);
+          if (dontRender) { return; } render(i); play(i);
+        }
+
+        function trim(i, a, b) {
+          removeEnd(i, b, true);
+          removeStart(i, a);
+        }
+
+
+
+        function serFloatArr(arr) { return flotsam32.encode(arr); }
+        function deserFloatArr(s) { return flotsam32.decode(s); }
+
+        function save() {
+          var s = JSON.stringify([
+            sr.recordingBufferArray.map( serFloatArr ),
+            sr.wordBuffer
+          ]);
+          localStorage.setItem('sr', s); // TODO TEMP
+          //return s;
+        }
+
+        function load(s) {
+          s = localStorage.getItem('sr', s); // TODO TEMP
+          var o = JSON.parse(s);
+          sr.recordingBufferArray = o[0].map( deserFloatArr );
+          sr.wordBuffer = o[1];
+          sr.generateModel();
         }
     </script>
   </body>
