@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+
+    <title>SR</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style media="screen">
+      body {
+        font-family: sans-serif;
+      }
+
+      canvas {
+        background-color: #222;
+      }
+    </style>
+  </head>
+
+  <body>
+    <script src="adapter.js"></script>
+    <script src="JsSpeechRecognizer.js"></script>
+
+    <h1>SR</h1>
+
+    <button autofocus onclick="r()">REC</button>
+    <button onclick="play(sr.recordingBufferArray.length-1)">PLAY</button>
+
+    <script>
+        var sr = new JsSpeechRecognizer();
+        sr.openMic();
+
+
+
+        function record(word) {
+          sr.startTrainingRecording(word);
+        }
+
+        function stopRecord() {
+          var recId = sr.stopRecording() - 1;
+          sr.generateModel();
+          return recId;
+        }
+
+
+
+        function play(recId) {
+          sr.playTrainingBuffer(recId);
+        }
+
+        function del(recId) {
+          sr.deleteTrainingBuffer(recId);
+          sr.generateModel();
+        }
+
+
+
+        function listen() {
+          sr.startRecognitionRecording();
+        }
+
+        function stopListen() {
+          sr.stopRecording();
+          var res = sr.getTopRecognitionHypotheses(1);
+          return res;
+        }
+
+
+        function r() {
+          console.log('start');
+          record('mask');
+          setTimeout(function() {
+            var i = stopRecord();
+            console.log('stop #%s', i);
+            var buf = sr.recordingBufferArray[i];
+            render(buf);
+          }, 3000);
+        }
+
+
+        function render(buf) {
+          var W = 800;
+          var H = 300;
+          var cvsEl = document.querySelector('canvas');
+          if (cvsEl) { cvsEl.parentNode.removeChild(cvsEl); }
+          cvsEl = document.createElement('canvas');
+          cvsEl.setAttribute('width',  W);
+          cvsEl.setAttribute('height', H);
+          var ctx = cvsEl.getContext('2d');
+          var L = buf.length;
+
+          /*var m =  1000000;
+          var M = -1000000;
+          var i, b;
+          for (i = 0; i < L; ++i) {
+            b = buf[i];
+            if (b < m) { m = b; }
+            if (b > M) { M = b; }
+          }*/
+          var m = -1;
+          var M =  1;
+
+          document.body.appendChild(cvsEl);
+          // console.log(L, m, M);
+
+          var lh = M - m;
+          var sh = H / lh;
+          function f(i) {
+            return (i - m) * sh;
+          }
+
+          var x, y;
+          var sw = L / W;
+          var yy = 0;
+          ctx.fillStyle = '#FFF';
+
+          for (i = 0; i < W; ++i) {
+            x = Math.round( i * sw );
+            y = buf[x];
+            y = Math.round( f(y) );
+            ctx.fillRect(i, y, 1, yy - y);
+            yy = y;
+          }
+        }
+    </script>
+  </body>
+</html>
