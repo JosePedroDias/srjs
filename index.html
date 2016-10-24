@@ -21,7 +21,7 @@
   <body>
     <script src="adapter.js"></script>
     <script src="JsSpeechRecognizer.js"></script>
-    <script src="flotsam32.js"></script>
+    <script src="intsam.js"></script>
 
     <h1>SR</h1>
 
@@ -180,13 +180,21 @@
 
 
 
-        function serFloatArr(arr) { return flotsam32.encode(arr); }
-        function deserFloatArr(s) { return flotsam32.decode(s); }
+        //function sFloatArr(arr) { return flotsam32.encode(arr); }
+        //function dFloatArr(s) { return flotsam32.decode(s); }
+
+        function sIntArr(arr) { return intsam.encode(arr); }
+        function dIntArr(s) { return intsam.decode(s); }
+
+        function sIntArrArr(arr) { return arr.map(sIntArr); }
+        function dIntArrArr(arr) { return arr.map(dIntArr); }
 
         function save() {
           var s = JSON.stringify([
-            sr.recordingBufferArray.map( serFloatArr ),
-            sr.wordBuffer
+            sr.wordBuffer,
+            sIntArr(sr.groupedValues),
+            sIntArrArr(sr.modelBuffer)
+            //sr.recordingBufferArray.map(sFloatArr),
           ]);
           localStorage.setItem('sr', s); // TODO TEMP
           //return s;
@@ -195,8 +203,10 @@
         function load(s) {
           s = localStorage.getItem('sr', s); // TODO TEMP
           var o = JSON.parse(s);
-          sr.recordingBufferArray = o[0].map( deserFloatArr );
-          sr.wordBuffer = o[1];
+          sr.wordBuffer = o[0];
+          sr.groupedValues = dIntArr(o[1]);
+          sr.modelBuffer = dIntArrArr(o[2]);
+          //sr.recordingBufferArray = o[3].map(dFloatArr);
           sr.generateModel();
         }
     </script>
